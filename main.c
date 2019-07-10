@@ -96,7 +96,10 @@ int main(){
 	*/
 	//write(out_file, out_mem, old_st.st_size+asm_size);
 	//先写入bss节前面的所有部分，然后是汇编代码，最后是文件的后一部分,由于前面已经将bss的
-	
+	unsigned int *tar = asm_addr+asm_code_offset+1;
+	//printf("%p\n", asm_addr);
+	//printf("%p\n", asm_addr+asm_code_offset+1);
+	*tar = old_entry - (data_phdr->p_vaddr + data_phdr->p_filesz-asm_size+5);
 	write(out_file, out_mem, ((Elf64_Shdr*)bss_pos)->sh_offset-asm_size);
 	write(out_file, asm_addr+asm_code_offset, asm_size);
 	write(out_file, out_mem+((Elf64_Shdr*)bss_pos)->sh_offset-asm_size, old_st.st_size-((Elf64_Shdr*)bss_pos)->sh_offset+asm_size);
