@@ -1,4 +1,4 @@
-all:test asm main
+all:test asm main par
 
 main:
 	gcc -o main main.c
@@ -7,5 +7,7 @@ asm:
 	ld -s -o asm asm.o
 test:
 	gcc -o test test.c
+par:
+	gcc -nostdlib -nostartfiles -fPIC -pie -fomit-frame-pointer par.c -o par
 clean:
-	rm test asm main out
+	rm test asm main out par

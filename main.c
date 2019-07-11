@@ -18,11 +18,11 @@ int main(){
 	void * old_addr = mmap(0, old_st.st_size, PROT_READ, MAP_PRIVATE, fd, 0);
 	//读取asm文件
 	struct stat st;
-	int asm_file = open("./asm", O_RDWR);
+	int asm_file = open("./par", O_RDWR);
 	fstat(asm_file, &st);
 	void * asm_addr = mmap(0, st.st_size, PROT_READ|PROT_WRITE, MAP_PRIVATE, asm_file, 0);
-	unsigned long asm_size = ((Elf64_Shdr*)(((Elf64_Ehdr*)asm_addr)->e_shoff + asm_addr)+1)->sh_size;
-	unsigned long asm_code_offset = ((Elf64_Shdr*)(((Elf64_Ehdr*)asm_addr)->e_shoff + asm_addr)+1)->sh_offset;
+	unsigned long asm_size = ((Elf64_Shdr*)(((Elf64_Ehdr*)asm_addr)->e_shoff + asm_addr)+6)->sh_size;
+	unsigned long asm_code_offset = ((Elf64_Shdr*)(((Elf64_Ehdr*)asm_addr)->e_shoff + asm_addr)+6)->sh_offset;
 	void* out_mem = malloc(old_st.st_size+asm_size);
 	memcpy(out_mem, old_addr, old_st.st_size);
 	
@@ -95,11 +95,11 @@ int main(){
 	write(out_file, out_mem+0x1040, old_st.st_size-0x1040);
 	*/
 	//write(out_file, out_mem, old_st.st_size+asm_size);
-	//先写入bss节前面的所有部分，然后是汇编代码，最后是文件的后一部分,由于前面已经将bss的
-	unsigned int *tar = asm_addr+asm_code_offset+1;
-	//printf("%p\n", asm_addr);
-	//printf("%p\n", asm_addr+asm_code_offset+1);
-	*tar = old_entry - (data_phdr->p_vaddr + data_phdr->p_filesz-asm_size+5);
+	//先写入bss节前面的所有部分，然后是汇编代码，最后是文件的后一部分,由于前面已经将bss的大小进行了调整，所以这里也需要调整一下
+	unsigned int *tar = asm_addr+asm_code_offset+0x70;
+	*tar = old_entry - (data_phdr->p_vaddr + data_phdr->p_filesz-asm_size+0x74);
+	unsigned long * de = asm_addr+asm_code_offset+0x81;
+	*de = 10;
 	write(out_file, out_mem, ((Elf64_Shdr*)bss_pos)->sh_offset-asm_size);
 	write(out_file, asm_addr+asm_code_offset, asm_size);
 	write(out_file, out_mem+((Elf64_Shdr*)bss_pos)->sh_offset-asm_size, old_st.st_size-((Elf64_Shdr*)bss_pos)->sh_offset+asm_size);
