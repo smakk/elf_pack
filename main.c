@@ -103,15 +103,15 @@ int main(){
 	//write(out_file, out_mem, old_st.st_size+asm_size);
 	//先写入bss节前面的所有部分，然后是汇编代码，最后是文件的后一部分,由于前面已经将bss的大小进行了调整，所以这里也需要调整一下
 	unsigned long code_size = text_pos->sh_size/sizeof(unsigned long);
-	//这里是向par的代码中填充一些关键数据
+	//这里是向par的代码中填充一些关键数据，地址需要根据汇编吗算出来
 	//入口地址调整
-	unsigned int *tar = asm_addr+asm_code_offset+0x66;
-	*tar = old_entry - (data_phdr->p_vaddr + data_phdr->p_filesz-asm_size+0x6a);
+	unsigned int *tar = asm_addr+asm_code_offset+0x98;
+	*tar = old_entry - (data_phdr->p_vaddr + data_phdr->p_filesz-asm_size+0x9c);
 	//代码段开始位置
-	unsigned long* tt = asm_addr+asm_code_offset+0x6b;
+	unsigned long* tt = asm_addr+asm_code_offset+0x9d;
 	*tt = text_pos->sh_addr;
 	//代码段大小
-	tt = asm_addr+asm_code_offset+0x73;
+	tt = asm_addr+asm_code_offset+0xa5;
 	*tt = code_size;
 	unsigned long * code_begin = out_mem+text_pos->sh_offset;
 	
