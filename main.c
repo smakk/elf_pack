@@ -53,10 +53,16 @@ int main(){
 	//3、修改.bss节头,bss应该是最后一个被加载进内存的节头,bss末尾应该是data段的末尾
 	//4、对bss节之后的所有节的地址进行调整
 	Elf64_Shdr* curr = out_mem + ehdr->e_shoff-asm_size;
+	Elf64_Shdr* shstr = curr+ehdr->e_shstrndx;
+	Elf64_Shdr* text_pos = NULL;
 	Elf64_Shdr* bss_pos = NULL;
 	int kk;
 	for(i=0;i<ehdr->e_shnum;i++){
 		//这里因为p_memsz已经被修改了，所以需要减去asm_size
+		//printf("%s\n", (char*)(out_mem+shstr->sh_offset+curr->sh_name));
+		if(strcmp(".text",(char*)(out_mem+shstr->sh_offset+curr->sh_name)) == 0){
+			text_pos = curr;
+		}
 		if(curr->sh_addr+curr->sh_size == data_phdr->p_vaddr+data_phdr->p_memsz-asm_size){
 			bss_pos = (void*)curr;
 			kk = 1;
@@ -96,10 +102,27 @@ int main(){
 	*/
 	//write(out_file, out_mem, old_st.st_size+asm_size);
 	//先写入bss节前面的所有部分，然后是汇编代码，最后是文件的后一部分,由于前面已经将bss的大小进行了调整，所以这里也需要调整一下
-	unsigned int *tar = asm_addr+asm_code_offset+0x70;
-	*tar = old_entry - (data_phdr->p_vaddr + data_phdr->p_filesz-asm_size+0x74);
-	unsigned long * de = asm_addr+asm_code_offset+0x81;
-	*de = 10;
+	unsigned long code_size = text_pos->sh_size/sizeof(unsigned long);
+	//这里是向par的代码中填充一些关键数据
+	//入口地址调整
+	unsigned int *tar = asm_addr+asm_code_offset+0x66;
+	*tar = old_entry - (data_phdr->p_vaddr + data_phdr->p_filesz-asm_size+0x6a);
+	//代码段开始位置
+	unsigned long* tt = asm_addr+asm_code_offset+0x6b;
+	*tt = text_pos->sh_addr;
+	//代码段大小
+	tt = asm_addr+asm_code_offset+0x73;
+	*tt = code_size;
+	unsigned long * code_begin = out_mem+text_pos->sh_offset;
+	
+	//printf("%lx\n", *(unsigned long*)(asm_addr+asm_code_offset));
+	int j;
+	
+	for(j=0;j<code_size;j++){
+		*code_begin = ~(*code_begin);
+		code_begin++;
+	}
+	
 	write(out_file, out_mem, ((Elf64_Shdr*)bss_pos)->sh_offset-asm_size);
 	write(out_file, asm_addr+asm_code_offset, asm_size);
 	write(out_file, out_mem+((Elf64_Shdr*)bss_pos)->sh_offset-asm_size, old_st.st_size-((Elf64_Shdr*)bss_pos)->sh_offset+asm_size);
